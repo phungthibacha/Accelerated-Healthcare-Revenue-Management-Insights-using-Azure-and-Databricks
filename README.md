@@ -31,11 +31,6 @@ RCM ensures the hospital can provide quality care while maintaining financial he
 *   **Maximize Patient Payments:** Encourage timely and complete payments from patients.
 *   **Minimize Collection Period:** Reduce the time it takes to collect outstanding balances.
 
-**Key Performance Indicators (KPIs) for AR:**
-
-*   **AR Aging:** Percentage of AR that is over 90 days old.
-*   **Days in AR:** Average number of days it takes to collect outstanding payments.
-
 ## Project Data Architecture and Execution Flow
 
 The project employs a Medallion architecture for data flow:
@@ -51,14 +46,15 @@ The project employs a Medallion architecture for data flow:
 **Project Flow:**
 
 `Landing (flat file) -> Bronze (Parquet files) -> Silver (Delta table) -> Gold (Delta table)`
+![Data Architecture](images/Data%20Architecture.png)
 
 **Key Components:**
 
-*   **Data Ingestion:** Azure Data Factory (ADF) or Databricks for data ingestion from various sources.
+*   **Data Ingestion:** Azure Data Factory (ADF) for data ingestion from various sources.
+![Data Fatories Pipelines](images/pipeline%20adf.png)
 *   **Data Transformation:** Data cleaning, validation, normalization, and enrichment using Azure Databricks.
 *   **Data Storage:** Azure Data Lake Storage Gen2 for storing raw and processed data.
 *   **Data Warehouse:** Delta Lake tables for storing the refined data.
-*   **CI/CD Pipeline:** Automated pipeline for building, testing, and deploying the data pipeline.
 *   **Data Quality Monitoring:** Regular checks to ensure data accuracy and completeness.
 *   **Data Security:** Using Key Vault for storing passwords and all credential keys.
 
@@ -84,6 +80,7 @@ The project employs a Medallion architecture for data flow:
 ## Project Implementation Steps
 
 ### Background Activity - Preprocessing: Loading EMR Data into SQL Databases
+![Pipeline 1](images/pipeline%201%20-%20overall.png)
 
 Before proceeding with the main data pipeline, a preliminary step involves loading the EMR data from CSV files into Azure SQL Database tables for both hospitals (Hospital A and Hospital B). This ensures the SQL databases are populated with the necessary data for subsequent pipeline stages. This is achieved through an Azure Data Factory (ADF) pipeline named `pipe_to_insert_data_to_sql_table_preprocessing`.
 
@@ -116,6 +113,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
         *   **Sink:** Uses the destination dataset (`generic_sql_ds`).
 
 **Data Loading Logic:** The pipeline copies data from the CSV files into the following tables within the respective SQL databases:
+![Raw EMR data for hospital A](images/raw%20data%20EMR%20hospital%20A.png)
 
 *   Departments
 *   Providers
@@ -124,6 +122,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 *   Transactions
 
 **Outcome:** Upon successful execution of the pipeline, the SQL databases are populated with the EMR data from the CSV files, making the data available for the subsequent stages of the main data pipeline.
+![SQL Database Hospital A](images/sql%20database%20hospital%20A.png)
 
 ### 0. Environment Setup
 
@@ -131,6 +130,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 
 *   **0.1 Securing the Pipeline with Key Vault and Mount Points:** Mount points (landing, bronze, silver, gold, configs) improve data organization, enhance security by storing sensitive information in Azure Key Vault, simplify configuration, and enable flexible scaling.
 *   **0.2 Key Vault Setup:**
+![Key Vault](images/key%20vault.png)
     *   Create Key Vault (e.g., `tt-health-care-kv`).
     *   Add Secrets:
         *   `sql-db-pwd` (SQL Database access key)
@@ -143,23 +143,26 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 ### Step 1: Data Ingestion - Create ADF pipeline
 
 *   **1.1 ADF pipeline for ingesting EMR data from Azure SQL to Bronze:**
+![Pipeline 2](images/pipeline%202%20-%20overall.png)
     *   Uses parameterized queries and metadata-driven configuration (load patterns stored in `ttadlsdev` in ADLS Gen 2 `emr/load_config.csv`).
     *   Loads tables based on the `load_config` file and inserts load activity results into an `audit.load_logs` Delta table.
     *   Uses Linked Services for connections to:
+![Linked Services](images/linked%20service.png)
         *   Azure SQL DB (parameterized for both hospitals)
         *   ADLS Gen2
         *   Delta Lake (for audit table)
         *   Key Vault
         *   Databricks
     *   Uses Datasets with parameters for database name, schema name, table name, config file path, target data path, and audit table details.
+  ![Datasets](images/datasets.png)
     *   Pipeline Activities:
         1.  **Lookup Activity:** Reads the config file (`configs/emr/load_config.csv`).
         2.  **For Each Activity:** Iterates over each entity in the config file.
             *   Runs pipelines for ingesting tables in parallel.
             *   **Get Metadata Activity:** Checks if the file exists in the Bronze folder.
             *   **If Condition (File Exists):** Moves existing files to an archive folder.
-            *   **If Condition (is_active Flag):** Checks the `is_active` flag in the config file.
-            *   **If Condition (Execute Pipeline):** Executes data loading if `is_active` is 1.
+            *   **If Condition (is_active Flag):** Checks the `is_active` flag in the config file. Executes pipeline for data loading if `is_active` is 1.
+   ![Pipeline 3 inside pipeline 2](images/pipeline%203%20-%20overall%20-%20take%20paramenters%20from%20pipeline%202.png)
                 *   **If Condition (Load Type - Full):** Performs a full load using a Copy Data activity and inserts logs into the audit table.
                 *   **If Condition (Load Type - Incremental):** Performs an incremental load by fetching the last loaded date from the audit table, copying new data, and inserting new logs.
 *   **1.2 Ingesting Claim and CPT code data from Landing to Bronze:**
@@ -172,6 +175,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
     *   Creates DataFrames with defined schemas and writes them in Parquet format (append mode for ICD, overwrite mode for NPI).
 *   Implements retries in ADF pipeline activities.
 *   Implements Unity Catalog for data sharing across workspaces, creating a catalog named `tt_hc_adb_ws` with a schema/database `audit` and table `load_logs`.
+![Bronze container Parquet format](images/bronze%20container%20-%20parquet%20format.png)
 
 ### Step 2: Data Transformation - Implement the Silver Layer
 
@@ -210,24 +214,7 @@ Data in the Gold layer consists of the latest, non-quarantined records (`is_quar
 *   Implement data lineage tracking.
 *   Enhance CI/CD pipeline with automated testing and deployment.
 *   Implement more sophisticated performance tuning and optimization strategies.  
-![Data Architecture](images/Data%20Architecture.png)
-![Azure Resource Groups](images/resource%20group.png)
-![ADLS Gen 2 Container Structure](images/adlsgen2%20container.png)
-![Key Vault](images/key%20vault.png)
 
-![Data Fatories Pipelines](images/pipeline%20adf.png)
-![Linked Services](images/linked%20service.png)
-![Datasets](images/datasets.png)
-
-![Pipeline 1](images/pipeline%201%20-%20overall.png)
-![Pipeline 2](images/pipeline%202%20-%20overall.png)
-![Pipeline 3 inside pipeline 2](images/pipeline%203%20-%20overall%20-%20take%20paramenters%20from%20pipeline%202.png)
-
-![Raw EMR data for hospital A](images/raw%20data%20EMR%20hospital%20A.png)
-
-![SQL Database Hospital A](images/sql%20database%20hospital%20A.png)
-
-![Bronze container Parquet format](images/bronze%20container%20-%20parquet%20format.png)
 ![]
 ![]
 ![]
