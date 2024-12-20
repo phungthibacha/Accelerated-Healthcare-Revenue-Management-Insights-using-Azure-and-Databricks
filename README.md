@@ -85,6 +85,18 @@ The project employs a Medallion architecture for data flow:
 
 Before proceeding with the main data pipeline, a preliminary step involves loading the EMR data from CSV files into Azure SQL Database tables for both hospitals (Hospital A and Hospital B). This ensures the SQL databases are populated with the necessary data for subsequent pipeline stages. This is achieved through an Azure Data Factory (ADF) pipeline named `pipe_to_insert_data_to_sql_table_preprocessing`.
 
+**Data Loading Logic:** The pipeline copies data from the CSV files into the following tables within the respective SQL databases:
+![Raw EMR data for hospital A](images/raw%20data%20EMR%20hospital%20A.png)
+
+*   Departments
+*   Providers
+*   Encounters
+*   Patients
+*   Transactions
+
+**Outcome:** Upon successful execution of the pipeline, the SQL databases are populated with the EMR data from the CSV files, making the data available for the subsequent stages of the main data pipeline.
+![SQL Database Hospital A](images/sql%20database%20hospital%20A.png)
+
 **Data Sources:**
 
 *   CSV files representing EMR data for each hospital. These files are uploaded to a dedicated container (`raw-data-for-sql-database`) within the provided ADLS Gen2 storage (`adlshealthcareprojectdev`). The files are organized within folders `HospitalA` and `HospitalB` for clarity.
@@ -95,7 +107,9 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 **Data Sinks:**
 
 *   Azure SQL Databases: `sqldb-hospital-a` and `sqldb-hospital-b`. These databases are assumed to be pre-existing.
+
 ![SQL databases for 2 hospitals ](images/sql%20databases.png)
+
 **Pipeline Creation Steps:**
 
 1.  **Creation of Linked Services:**
@@ -103,6 +117,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
     *   **For ADLS Gen2 (Source):** The linked service `ls_adlsgen2` is used.
     *   **For SQL DB (Sink):** The existing linked service `ls_azuresqldb` is used.
 2.  **Creation of Datasets:**
+
 ![Dataset](images/datasets.png)
     *   **For Source (CSV files):** The generic dataset `ds_generic_adlsgen2_flat_file` is used.
     *   **For Sink (SQL tables):** The generic dataset `ds_generic_sql_table` is used.
@@ -116,22 +131,10 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 ![For Each activity](images/foreach%20pipeline%201.png)
 3.  **Configure the ForEach Activity:** Inside the ForEach activity:
     *   **Add a Copy Data Activity:** This activity copies data from the CSV files to the SQL tables.
-        *   **Source:** Uses the source dataset (`generic_adls_flat_file_ds`).
+        *   **Source:** Uses the source dataset (`ds_generic_adlsgen2_flat_file`).
 ![Copy activity source](images/copy%20data%20into%20sql%20db%20pipeline1.png)
         *   **Sink:** Uses the destination dataset (`ds_generic_sql_table`).
 ![Copy activity sink](images/copy%20data%20-%20sink%20pipeline%201.png)
-
-**Data Loading Logic:** The pipeline copies data from the CSV files into the following tables within the respective SQL databases:
-![Raw EMR data for hospital A](images/raw%20data%20EMR%20hospital%20A.png)
-
-*   Departments
-*   Providers
-*   Encounters
-*   Patients
-*   Transactions
-
-**Outcome:** Upon successful execution of the pipeline, the SQL databases are populated with the EMR data from the CSV files, making the data available for the subsequent stages of the main data pipeline.
-![SQL Database Hospital A](images/sql%20database%20hospital%20A.png)
 
 ### 0. Environment Setup
 
@@ -140,12 +143,12 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 *   **0.1 Securing the Pipeline with Key Vault and Mount Points:** Mount points (landing, bronze, silver, gold, configs) improve data organization, enhance security by storing sensitive information in Azure Key Vault, simplify configuration, and enable flexible scaling.
 *   **0.2 Key Vault Setup:**
 ![Key Vault](images/key%20vault.png)
-    *   Create Key Vault (e.g., `tt-health-care-kv`).
+    *   Create Key Vault ( `kv-healthcare-dbs-azure`).
     *   Add Secrets:
-        *   `sql-db-pwd` (SQL Database access key)
-        *   `tt-adls-access-key-dev` (ADLS Gen2 access key)
-        *   `tt-hc-abd-ws-pat` (Databricks workspace access token)
-    *   Create Databricks Secret Scope (e.g., `tt-hc-kv`) linked to the Key Vault.
+        *   `sqldb-password` (SQL Database access key)
+        *   `adls-access-key` (ADLS Gen2 access key)
+        *   `databricks-access-token` (Databricks workspace access token)
+    *   Create Databricks Secret Scope (e.g., `databricks-kv`) linked to the Key Vault.
     *   Implement Granular Access Control (Permissions) by registering applications in Azure AD and assigning specific Key Vault permissions.
 *   **0.3 Mounting Storage with Secure Access:** (Code snippet to be included in the project repository). This section would contain code for mounting storage using `dbutils.fs.mount`.
 
@@ -164,7 +167,8 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
         *   Key Vault
         *   Databricks
     *   Uses Datasets with parameters for database name, schema name, table name, config file path, target data path, and audit table details.
-  ![Datasets](images/datasets.png)
+
+![Datasets](images/datasets.png)
     *   Pipeline Activities:
         1.  **Lookup Activity:** Reads the config file (`configs/emr/load_config.csv`).
         2.  **For Each Activity:** Iterates over each entity in the config file.
@@ -172,7 +176,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
             *   **Get Metadata Activity:** Checks if the file exists in the Bronze folder.
             *   **If Condition (File Exists):** Moves existing files to an archive folder.
             *   **If Condition (is_active Flag):** Checks the `is_active` flag in the config file. Executes pipeline for data loading if `is_active` is 1.
-   ![Pipeline 3 inside pipeline 2](images/pipeline%203%20-%20overall%20-%20take%20paramenters%20from%20pipeline%202.png)
+![Pipeline 3 inside pipeline 2](images/pipeline%203%20-%20overall%20-%20take%20paramenters%20from%20pipeline%202.png)
                 *   **If Condition (Load Type - Full):** Performs a full load using a Copy Data activity and inserts logs into the audit table.
                 *   **If Condition (Load Type - Incremental):** Performs an incremental load by fetching the last loaded date from the audit table, copying new data, and inserting new logs.
 *   **1.2 Ingesting Claim and CPT code data from Landing to Bronze:**
