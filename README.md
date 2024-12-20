@@ -148,7 +148,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
         *   `databricks-access-token` (Databricks workspace access token)
     *   Create Databricks Secret Scope (e.g., `databricks-kv`) linked to the Key Vault.
     *   Implement Granular Access Control (Permissions) by registering applications in Azure AD and assigning specific Key Vault permissions.
-*   **0.3 Mounting Storage with Secure Access:** (Code snippet to be included in the project repository). This section would contain code for mounting storage using `dbutils.fs.mount`.
+*   **0.3 Mounting Storage with Secure Access:** (Code snippet to be included in the project repository)
 
 ### Step 1: Data Ingestion - Create ADF pipeline
 
@@ -169,18 +169,34 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 
     *   Pipeline Activities:
         1.  **Lookup Activity:** Reads the config file (`configs/emr/load_config.csv`).
+![Look up config](images/lookup%20config%20csv%20file%20in%20pipeline%202.png)
         2.  **For Each Activity:** Iterates over each entity in the config file.
+![Inside for each](images/Inside%20ForEach%20pipeline%202.png)
             *   Runs pipelines for ingesting tables in parallel.
+![Parallel](images/For%20each%20setting%20in%20pipeline%202%20-%20parallel%20loading%20with%20batch%20of%205.png)
             *   **Get Metadata Activity:** Checks if the file exists in the Bronze folder.
+![Metadata activity](images/metadata%20activity%20-%20check%20file%20exist.png)
             *   **If Condition (File Exists):** Moves existing files to an archive folder.
+![If file exist](images/if%20file%20exists%2C%20put%20in%20archive%20folder%20-%20pipeline%202.png)
+![Copy activity - Source](images/cp%20into%20archive%20-%20source%20-%20pipeline%202.png)
+![Copy activity - Sink](images/copy%20into%20archive%20-%20sink%20.png)
             *   **If Condition (is_active Flag):** Checks the `is_active` flag in the config file. Executes pipeline for data loading if `is_active` is 1.
+![Check is active](images/check%20is%20active%20flag%20in%20loading%20file%2C%20if%20still%20active%20-%20start%20pipeline%203.png)
 ![Pipeline 3 inside pipeline 2](images/pipeline%203%20-%20overall%20-%20take%20paramenters%20from%20pipeline%202.png)
                 *   **If Condition (Load Type - Full):** Performs a full load using a Copy Data activity and inserts logs into the audit table.
+![Source copy full load](images/if%20true%2C%20copy%20full%20load%20-%20source%20setting%20-%20pipeline%203.png)
+![Sink copy full load](images/if%20true%2C%20copy%20full%20load-sink%20setting%20-%20pipeline%203.png)
+![Insert loading log](images/if%20true%2C%20after%20copy%2C%20then%20insert%20into%20audit%20load%20logs%20table%20information%20about%20loading%20-%20pipeline%203.png)
                 *   **If Condition (Load Type - Incremental):** Performs an incremental load by fetching the last loaded date from the audit table, copying new data, and inserting new logs.
+![Fetch log](images/if%20false%2C%20first%20check%20loading%20log%20table%20to%20check%20last%20fetched%20date%20-%20pipeline%203.png)
+![Source copy](images/if%20false%2C%20second%2C%20loading%20data%20start%20from%20the%20last%20fetched%20date%20in%20log%20-%20source%20setting%20-%20pipeline%203.png)
+![Sink copy](images/if%20false%2C%20second%2C%20loading%20data%20start%20from%20the%20last%20fetched%20date%20in%20log%20-%20sink%20setting%20-%20pipeline%203.png)
+![Insert log](images/if%20false%2C%20third%20insert%20loading%20information%20into%20loading%20log%20table-%20pipeline%203.png)
 *   **1.2 Ingesting Claim and CPT code data from Landing to Bronze:**
     *   Uses Databricks notebooks to ingest data from the landing folder (`/claims` and `/cptcodes`) to the bronze folder in Parquet format with overwrite mode.
     *   Performs minor transformations (column name modifications, data source input).
     *   Creates temporary views for data quality checks.
+
 *   **1.3 Ingesting NPI and ICD data from public API to Bronze:** (Code snippet to be included in the project repository).
     *   Extracts data from public APIs.
     *   Defines schemas for each column.
@@ -190,6 +206,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 ![Bronze container Parquet format](images/bronze%20container%20-%20parquet%20format.png)
 
 ### Step 2: Data Transformation - Implement the Silver Layer
+![Silver layer table](images/silver%20layer%20tables%20-%20cleaning%20-%20%20data%20quality%20-%20common%20data%20model%20.png)
 
 **Data in Bronze Layer:**
 
@@ -211,14 +228,8 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 
 ### Step 3: Data Loading - Implement the Gold Layer
 
-Data in the Gold layer consists of the latest, non-quarantined records (`is_quarantined = False`).
-
-**Facts and Dimensions:**
-
-*   **`dim_patient`:** (Details of transformations and aggregations to be provided.)
-*   **`dim_cpt`:** (Details of transformations and aggregations to be provided.)
-*   **`dim_department`:** (Details of transformations and aggregations to be provided.)
-*   **`fact_transactions`:** (Details of transformations and aggregations to be provided.)
+Data in the Gold layer (Facts and Dimensions tables) consists of the latest, non-quarantined records (`is_quarantined = False`).
+![Gold layer table](images/gold%20layer%20tables%20-%20dim%20and%20fact.png)
 
 ## Further Enhancements (Future Considerations)
 
@@ -227,15 +238,5 @@ Data in the Gold layer consists of the latest, non-quarantined records (`is_quar
 *   Enhance CI/CD pipeline with automated testing and deployment.
 *   Implement more sophisticated performance tuning and optimization strategies.  
 
-![]
-![]
-![]
-![]
-![]
-![]
-![]
-![]
 
-![Databricks unity catalog](images/databricks%20unity%20catalog.png)
-![Silver layer table](images/silver%20layer%20tables%20-%20cleaning%20-%20%20data%20quality%20-%20common%20data%20model%20.png)
-![Gold layer table](images/gold%20layer%20tables%20-%20dim%20and%20fact.png)
+
