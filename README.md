@@ -100,7 +100,6 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 **Data Sources:**
 
 *   CSV files representing EMR data for each hospital. These files are uploaded to a dedicated container (`raw-data-for-sql-database`) within the provided ADLS Gen2 storage (`adlshealthcareprojectdev`). The files are organized within folders `HospitalA` and `HospitalB` for clarity.
-![ADLS Gen 2 Containers Name](images/adlsgen2%20container.png)
 *   A lookup file (JSON format) is also uploaded to the same container within a folder called `Lookup`. This file is used for metadata or configuration during the data loading process.
 ![Lookup json file](images/look%20up%20table%20mapping%20json%20.png)
 
@@ -119,6 +118,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 2.  **Creation of Datasets:**
 
 ![Dataset](images/datasets.png)
+
     *   **For Source (CSV files):** The generic dataset `ds_generic_adlsgen2_flat_file` is used.
     *   **For Sink (SQL tables):** The generic dataset `ds_generic_sql_table` is used.
     *   **For Lookup File:** A new dataset is created `ds_for_lookup_file_adls_to_sql`, specifying ADLS Gen2 as the source and JSON as the file format.
@@ -169,6 +169,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
     *   Uses Datasets with parameters for database name, schema name, table name, config file path, target data path, and audit table details.
 
 ![Datasets](images/datasets.png)
+
     *   Pipeline Activities:
         1.  **Lookup Activity:** Reads the config file (`configs/emr/load_config.csv`).
         2.  **For Each Activity:** Iterates over each entity in the config file.
