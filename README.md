@@ -88,12 +88,6 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 **Data Loading Logic:** The pipeline copies data from the CSV files into the following tables within the respective SQL databases:
 ![Raw EMR data for hospital A](images/raw%20data%20EMR%20hospital%20A.png)
 
-*   Departments
-*   Providers
-*   Encounters
-*   Patients
-*   Transactions
-
 **Outcome:** Upon successful execution of the pipeline, the SQL databases are populated with the EMR data from the CSV files, making the data available for the subsequent stages of the main data pipeline.
 ![SQL Database Hospital A](images/sql%20database%20hospital%20A.png)
 
@@ -116,7 +110,6 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
     *   **For ADLS Gen2 (Source):** The linked service `ls_adlsgen2` is used.
     *   **For SQL DB (Sink):** The existing linked service `ls_azuresqldb` is used.
 2.  **Creation of Datasets:**
-![Dataset](images/datasets.png)
     *   **For Source (CSV files):** The generic dataset `ds_generic_adlsgen2_flat_file` is used.
     *   **For Sink (SQL tables):** The generic dataset `ds_generic_sql_table` is used.
     *   **For Lookup File:** A new dataset is created `ds_for_lookup_file_adls_to_sql`, specifying ADLS Gen2 as the source and JSON as the file format.
@@ -165,7 +158,6 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
         *   Key Vault
         *   Databricks
     *   Uses Datasets with parameters for database name, schema name, table name, config file path, target data path, and audit table details.
-![Datasets](images/datasets.png)
 
     *   Pipeline Activities:
         1.  **Lookup Activity:** Reads the config file (`configs/emr/load_config.csv`).
@@ -206,27 +198,21 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 ![Bronze container Parquet format](images/bronze%20container%20-%20parquet%20format.png)
 
 ### Step 2: Data Transformation - Implement the Silver Layer
-![Silver layer table](images/silver%20layer%20tables%20-%20cleaning%20-%20%20data%20quality%20-%20common%20data%20model%20.png)
 
 **Data in Bronze Layer:**
+![Silver layer table](images/silver%20layer%20tables%20-%20cleaning%20-%20%20data%20quality%20-%20common%20data%20model%20.png)
 
-*   EMR data (Providers, Departments, Patients, Transactions, Encounters)
-*   Claims data
-*   CPT data
-*   NPI data
-*   ICD codes
-
-**Transformation Logic:**
+**Transformation Logic - Using Databricks notebooks:**
 
 *   **Providers:** Full load, overwrite using Delta tables without SCD. Unions data from both hospitals, creates a schema with an `is_quarantined` column for data quality checks, performs data quality checks for null values and duplicate Provider IDs.
 *   **Departments:** Full load, overwrite using Delta tables without SCD. Unions data from both hospitals with transformations for mismatched department IDs, creates a schema with `is_quarantined`, performs data quality checks for null values.
 *   **Patients:** SCD2 and incremental load using Delta tables. Unions data from both hospitals with schema adjustments, performs data quality checks for null values, loads data into the Silver layer, and implements SCD2 using `MERGE INTO` with `inserted_date`, `modified_date`, and `is_current` columns.
-*   **Transactions:** Implementing SCD2 and incremental load using Delta table format. (Details to be provided.)
-*   **Encounters:** Implementing SCD2 and incremental load using Delta table format. (Details to be provided.)
-*   **Claims & CPT:** Implementing SCD2 and incremental load using Delta table format. (Details to be provided.)
-*   **NPI & ICD codes:** Implementing SCD2 and incremental load using Delta table format. (Details to be provided.)
+*   **Transactions:** Implementing SCD2 and incremental load using Delta table format. 
+*   **Encounters:** Implementing SCD2 and incremental load using Delta table format. 
+*   **Claims & CPT:** Implementing SCD2 and incremental load using Delta table format. 
+*   **NPI & ICD codes:** Implementing SCD2 and incremental load using Delta table format. 
 
-### Step 3: Data Loading - Implement the Gold Layer
+### Step 3: Data Loading - Implement the Gold Layer - Using Databricks notebooks
 
 Data in the Gold layer (Facts and Dimensions tables) consists of the latest, non-quarantined records (`is_quarantined = False`).
 ![Gold layer table](images/gold%20layer%20tables%20-%20dim%20and%20fact.png)
