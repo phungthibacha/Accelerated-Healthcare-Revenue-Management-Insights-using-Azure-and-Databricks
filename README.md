@@ -4,7 +4,9 @@
 
 **Objective:** Establish a robust data engineering pipeline that leverages data quality checks to deliver timely, accurate, and reliable data-driven insights for healthcare revenue cycle management (RCM). This pipeline will generate fact and dimension tables to support reporting teams in generating critical KPIs.
 
-**Problem Statement:** Healthcare providers face challenges in managing their revenue cycle. Inefficient processes, data quality issues, and a lack of insights can lead to delayed payments, increased costs, and reduced operational efficiency.
+## Problem Statement:
+
+Healthcare providers face challenges in managing their revenue cycle. Inefficient processes, data quality issues, and a lack of insights can lead to delayed payments, increased costs, and reduced operational efficiency.
 
 ## Domain Knowledge: Healthcare Revenue Cycle Management (RCM)
 
@@ -34,19 +36,18 @@ RCM ensures the hospital can provide quality care while maintaining financial he
 ## Project Data Architecture and Execution Flow
 
 The project employs a Medallion architecture for data flow:
-
-**Data Sources:**
-
-*   Electronic Medical Records (EMR) Data (Azure SQL Database)
-*   Claims Data (Flat files uploaded monthly to ADLS Gen2)
-*   NPI Data (Sourced from a public API)
-*   ICD Codes (Sourced from a public API)
-*   CPT Codes (Flat files uploaded monthly to ADLS Gen2)
-
 **Project Flow:**
 
 `Landing (flat file) -> Bronze (Parquet files) -> Silver (Delta table) -> Gold (Delta table)`
 ![Data Architecture](images/Data%20Architecture.png)
+
+**Data Sources:**
+
+*   Electronic Medical Records (EMR) Data (Azure SQL Database)
+*   Claims Data (Flat files uploaded monthly provided by insurance companies to ADLS Gen2)
+*   NPI Data (Sourced from a public API)
+*   ICD Codes (Sourced from a public API)
+*   CPT Codes (Flat files uploaded monthly to ADLS Gen2)
 
 **Key Components:**
 
@@ -86,31 +87,39 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 
 **Data Sources:**
 
-*   CSV files representing EMR data for each hospital. These files are uploaded to a dedicated container (`raw-data-for-sql-database`) within the provided ADLS Gen2 storage (`adlsdevnew`). The files are organized within folders `HospitalA` and `HospitalB` for clarity.
+*   CSV files representing EMR data for each hospital. These files are uploaded to a dedicated container (`raw-data-for-sql-database`) within the provided ADLS Gen2 storage (`adlshealthcareprojectdev`). The files are organized within folders `HospitalA` and `HospitalB` for clarity.
+![ADLS Gen 2 Containers Name](images/adlsgen2%20container.png)
 *   A lookup file (JSON format) is also uploaded to the same container within a folder called `Lookup`. This file is used for metadata or configuration during the data loading process.
+![Lookup json file](images/look%20up%20table%20mapping%20json%20.png)
 
 **Data Sinks:**
 
-*   Azure SQL Databases: `trendytech-hospital-a` and `trendytech-hospital-b`. These databases are assumed to be pre-existing.
-
+*   Azure SQL Databases: `sqldb-hospital-a` and `sqldb-hospital-b`. These databases are assumed to be pre-existing.
+![SQL databases for 2 hospitals ](images/sql%20databases.png)
 **Pipeline Creation Steps:**
 
 1.  **Creation of Linked Services:**
-    *   **For ADLS Gen2 (Source):** The existing linked service `AzureDataLakeStorage1` is used.
-    *   **For SQL DB (Sink):** The existing linked service `hosa_sql_ls` is used.
+![Linked services](images/linked%20service.png)
+    *   **For ADLS Gen2 (Source):** The linked service `ls_adlsgen2` is used.
+    *   **For SQL DB (Sink):** The existing linked service `ls_azuresqldb` is used.
 2.  **Creation of Datasets:**
-    *   **For Source (CSV files):** The generic dataset `generic_adls_flat_file_ds` is used.
-    *   **For Sink (SQL tables):** The generic dataset `generic_sql_ds` is used.
-    *   **For Lookup File:** A new dataset is created, specifying ADLS Gen2 as the source and JSON as the file format.
+![Dataset](images/datasets.png)
+    *   **For Source (CSV files):** The generic dataset `ds_generic_adlsgen2_flat_file` is used.
+    *   **For Sink (SQL tables):** The generic dataset `ds_generic_sql_table` is used.
+    *   **For Lookup File:** A new dataset is created `ds_for_lookup_file_adls_to_sql`, specifying ADLS Gen2 as the source and JSON as the file format.
+![ds look up file](images/lookup%20dataset%20in%20pipeline%201.png)
 
 **Pipeline Configuration Steps:**
 
 1.  **Add a Lookup Activity:** This activity reads the lookup file (JSON). The "First row only" option is set to `false` to read all rows.
 2.  **Add a ForEach Activity:** This activity iterates over the output of the Lookup activity. The `Items` property is set to `@activity('Lk_file_name').output.value`.
+![For Each activity](images/foreach%20pipeline%201.png)
 3.  **Configure the ForEach Activity:** Inside the ForEach activity:
     *   **Add a Copy Data Activity:** This activity copies data from the CSV files to the SQL tables.
         *   **Source:** Uses the source dataset (`generic_adls_flat_file_ds`).
-        *   **Sink:** Uses the destination dataset (`generic_sql_ds`).
+![Copy activity source](images/copy%20data%20into%20sql%20db%20pipeline1.png)
+        *   **Sink:** Uses the destination dataset (`ds_generic_sql_table`).
+![Copy activity sink](images/copy%20data%20-%20sink%20pipeline%201.png)
 
 **Data Loading Logic:** The pipeline copies data from the CSV files into the following tables within the respective SQL databases:
 ![Raw EMR data for hospital A](images/raw%20data%20EMR%20hospital%20A.png)
@@ -145,6 +154,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 *   **1.1 ADF pipeline for ingesting EMR data from Azure SQL to Bronze:**
 ![Pipeline 2](images/pipeline%202%20-%20overall.png)
     *   Uses parameterized queries and metadata-driven configuration (load patterns stored in `ttadlsdev` in ADLS Gen 2 `emr/load_config.csv`).
+![load config file](images/loading%20config%20file%20to%20load%20files%20from%20sql%20db%20to%20raw%20container%20-%20parquet%20format.png)
     *   Loads tables based on the `load_config` file and inserts load activity results into an `audit.load_logs` Delta table.
     *   Uses Linked Services for connections to:
 ![Linked Services](images/linked%20service.png)
