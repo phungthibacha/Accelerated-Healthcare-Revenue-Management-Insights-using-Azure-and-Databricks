@@ -116,9 +116,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
     *   **For ADLS Gen2 (Source):** The linked service `ls_adlsgen2` is used.
     *   **For SQL DB (Sink):** The existing linked service `ls_azuresqldb` is used.
 2.  **Creation of Datasets:**
-
 ![Dataset](images/datasets.png)
-
     *   **For Source (CSV files):** The generic dataset `ds_generic_adlsgen2_flat_file` is used.
     *   **For Sink (SQL tables):** The generic dataset `ds_generic_sql_table` is used.
     *   **For Lookup File:** A new dataset is created `ds_for_lookup_file_adls_to_sql`, specifying ADLS Gen2 as the source and JSON as the file format.
@@ -167,7 +165,6 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
         *   Key Vault
         *   Databricks
     *   Uses Datasets with parameters for database name, schema name, table name, config file path, target data path, and audit table details.
-
 ![Datasets](images/datasets.png)
 
     *   Pipeline Activities:
