@@ -193,13 +193,13 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
     *   Extracts data from public APIs.
     *   Defines schemas for each column.
     *   Creates DataFrames with defined schemas and writes them in Parquet format (append mode for ICD, overwrite mode for NPI).
-*   Implements retries in ADF pipeline activities.
-*   Implements Unity Catalog for data sharing across workspaces, creating a catalog named `tt_hc_adb_ws` with a schema/database `audit` and table `load_logs`.
+
 ![Bronze container Parquet format](images/bronze%20container%20-%20parquet%20format.png)
 
 ### Step 2: Data Transformation - Implement the Silver Layer
 
 **Data in Bronze Layer:**
+
 ![Silver layer table](images/silver%20layer%20tables%20-%20cleaning%20-%20%20data%20quality%20-%20common%20data%20model%20.png)
 
 **Transformation Logic - Using Databricks notebooks:**
@@ -215,6 +215,7 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 ### Step 3: Data Loading - Implement the Gold Layer - Using Databricks notebooks
 
 Data in the Gold layer (Facts and Dimensions tables) consists of the latest, non-quarantined records (`is_quarantined = False`).
+
 ![Gold layer table](images/gold%20layer%20tables%20-%20dim%20and%20fact.png)
 
 ## Further Enhancements (Future Considerations)
