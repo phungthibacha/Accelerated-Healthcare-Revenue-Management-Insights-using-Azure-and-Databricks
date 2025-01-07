@@ -145,6 +145,12 @@ Before proceeding with the main data pipeline, a preliminary step involves loadi
 
 ### Step 1: Data Ingestion - Create ADF pipeline
 
+**Data Ingestion Strategy Rationale:** 
+The initial data ingestion from Azure SQL databases to the Bronze layer in ADLS Gen2 is handled by Azure Data Factory (ADF). 
+   *   Due to the potential for large datasets in tables like `Transactions`, `Encounters`, and `Patients`, an *incremental load strategy* is implemented within the ADF pipelines for these specific tables. This involves querying the SQL databases for only new or updated records since the last successful load, minimizing data transfer and processing time. This is often achieved using a timestamp or sequence number column (watermark column name) in the source tables.
+   *   For smaller dimension tables like `Providers`, `Departments`, a *full load strategy* is employed. Since these tables are not expected to change as frequently or contain as much data, a full load is simpler to implement and doesn't introduce a significant performance overhead.
+
+
 *   **1.1 ADF pipeline for ingesting EMR data from Azure SQL to Bronze:**
 ![Pipeline 2](images/pipeline%202%20-%20overall.png)
     *   Uses parameterized queries and metadata-driven configuration (load patterns stored in `ttadlsdev` in ADLS Gen 2 `emr/load_config.csv`).
